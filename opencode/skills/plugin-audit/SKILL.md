@@ -1,6 +1,6 @@
 ---
 name: plugin-audit
-description: Cross-check new OpenCode plugins against existing configuration before installation. Analyze hooks, commands, model interactions, and present risks, overlaps, conflicts, and benefits. Wait for user confirmation before proceeding with installation and post-install steps. Use when user requests to install a new OpenCode plugin or asks about plugin compatibility.
+description: Analyze new OpenCode plugins for conflicts with existing configuration before installation. Triggers when user requests plugin install or compatibility check.
 ---
 
 # Plugin Audit Skill

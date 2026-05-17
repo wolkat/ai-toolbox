@@ -1,6 +1,6 @@
 ---
 name: skill-audit
-description: Cross-check new OpenCode skills against existing installed skills before installation. Analyze skill purpose, functionality overlap, use cases, and present conflicts, redundancies, and benefits. Wait for user confirmation before proceeding with installation. Use when user requests to install a new OpenCode skill or asks about skill compatibility.
+description: Analyze new OpenCode skills for overlap or conflict with existing skills before installation. Triggers when user requests skill install or compatibility check.
 ---
 
 # Skill Audit Skill
