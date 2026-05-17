@@ -1,6 +1,6 @@
 # ai-toolbox
 
-Collection of configs, skills, commands, and tools for AI coding agents.
+Collection of locally-created configs, skills, commands, and tools for AI coding agents.
 
 ## Structure
 
@@ -22,9 +22,18 @@ ai-toolbox/
 
 ## Installation
 
-### OpenCode
+### OpenCode (via stow)
 
-Copy skills and commands to OpenCode config:
+```bash
+cd ~/git/ai-toolbox
+make install    # symlink local items to ~/.config/opencode/
+make restow     # refresh symlinks after adding new directories
+make status     # check symlink state
+```
+
+Requires [GNU stow](https://www.gnu.org/software/stow/): `brew install stow`
+
+### Manual (without stow)
 
 ```bash
 # Skills
@@ -32,6 +41,9 @@ cp -r opencode/skills/* ~/.config/opencode/skills/
 
 # Commands
 cp opencode/commands/*.md ~/.config/opencode/command/
+
+# Plugins
+cp opencode/plugins/*.js ~/.config/opencode/plugins/
 ```
 
 ### Claude Code
@@ -48,23 +60,24 @@ cp claude/commands/*.md ~/.claude/commands/
 
 ### OpenCode Skills
 
-- **cloudflare** - Cloudflare platform skill (Workers, D1, R2, etc.)
-- **plugin-audit** - Plugin installation cross-check
-- **skill-audit** - Skill installation cross-check
-- **clonedeps** - Clone dependency source code
-- **codemap** - Generate codebase maps
-- **simplify** - Simplify code for clarity
+- **plugin-audit** — Cross-check plugins before installation
+- **skill-audit** — Cross-check skills before installation
+- **retro** — Session retrospective with 5 Whys and KPI tracking
 
 ### OpenCode Commands
 
-- `/cloudflare` - Cloudflare skill orchestrator
-- `/supermemory-init` - Initialize supermemory
-- `/supermemory-login` - Login to supermemory
-- `/supermemory-logout` - Logout from supermemory
+- `/retro` — Run session retrospective
+- `/save` — Save session learnings to supermemory
+
+### OpenCode Plugins
+
+- **agent-logger** — Log agent activations to console
 
 ## Contributing
 
 Add your own skills, commands, or configs to the appropriate directory and submit a PR.
+
+See [SKILL_STANDARDS.md](./SKILL_STANDARDS.md) for quality criteria.
 
 ## License
 
