@@ -1,13 +1,14 @@
 /**
  * Agent Logger Plugin for OpenCode
  *
- * Logs oh-my-opencode-slim agent activations to console.
- * Hybrid detection: message.role + subagent tool parsing.
+ * Logs agent and subagent activations to console.
+ * Works with any agent system: oh-my-opencode-slim, OpenCode built-ins,
+ * custom agents, or any model that sets message.role or uses subagent tools.
  *
- * Stored in ai-toolbox, symlinked via stow to ~/.config/opencode/plugins/
+ * Stored in ai-toolbox, symlinked to ~/.config/opencode/plugins/
  */
 
-const KNOWN_AGENTS = [
+const KNOWN_AGENTS = new Set([
   'orchestrator',
   'oracle',
   'council',
@@ -16,7 +17,16 @@ const KNOWN_AGENTS = [
   'designer',
   'fixer',
   'observer',
-];
+  'review',
+  'refactor',
+]);
+
+const SYSTEM_ROLES = new Set(['user', 'assistant', 'system', 'tool']);
+
+function getAgentColor(name) {
+  if (KNOWN_AGENTS.has(name)) return '\x1b[36m'; // cyan for known agents
+  return '\x1b[33m'; // yellow for unknown/discovery
+}
 
 export default async () => {
   return {
@@ -30,19 +40,23 @@ export default async () => {
     },
 
     /**
-     * Primary detection: check message.role for known agent names
+     * Log any non-system message role as an agent activation.
+     * Catches: oh-my-opencode-slim agents, custom agents, built-in subagents.
      */
     'message.updated': async (input) => {
       const role = input?.message?.role?.toLowerCase?.();
-      if (role && KNOWN_AGENTS.includes(role)) {
-        console.log(
-          `\x1b[36m[AGENT]\x1b[0m \x1b[1m${role.toUpperCase()}\x1b[0m activated`,
-        );
-      }
+      if (!role || SYSTEM_ROLES.has(role)) return;
+
+      const color = getAgentColor(role);
+      const tag = KNOWN_AGENTS.has(role) ? '[AGENT]' : '[AGENT?]';
+      console.log(
+        `${color}${tag}\x1b[0m \x1b[1m${role.toUpperCase()}\x1b[0m activated`,
+      );
     },
 
     /**
-     * Fallback detection: parse subagent/agent tool invocations
+     * Log all subagent/agent tool invocations regardless of name.
+     * Useful for discovering new agents and debugging delegation.
      */
     'tool.execute.before': async (input) => {
       const tool = input?.tool;
@@ -52,13 +66,14 @@ export default async () => {
       const name =
         args?.agent?.toLowerCase?.() ||
         args?.name?.toLowerCase?.() ||
-        args?.agentName?.toLowerCase?.();
+        args?.agentName?.toLowerCase?.() ||
+        'unknown';
 
-      if (name && KNOWN_AGENTS.includes(name)) {
-        console.log(
-          `\x1b[36m[AGENT]\x1b[0m \x1b[1m${name.toUpperCase()}\x1b[0m activated (via ${tool})`,
-        );
-      }
+      const color = getAgentColor(name);
+      const tag = KNOWN_AGENTS.has(name) ? '[AGENT]' : '[AGENT?]';
+      console.log(
+        `${color}${tag}\x1b[0m \x1b[1m${name.toUpperCase()}\x1b[0m activated (via ${tool})`,
+      );
     },
   };
 };
