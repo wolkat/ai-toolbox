@@ -22,6 +22,28 @@ Determine the plugin to install:
 - If GitHub URL, convert to npm package name (e.g., `antongulin/opencode-skill-creator` → `opencode-skill-creator`)
 - For scoped packages (e.g., `@spoons-and-mirrors/subtask2`), preserve the scope
 
+### Step 1.5: Verify Package Name and Type
+
+Before proceeding, verify the plugin exists and determine its type:
+
+**Check npm registry:**
+- Run `npm view {plugin-name} version` to verify the package exists
+- If 404, check for scoped name: try `npm search {plugin-name} --limit 5`
+- If still not found, the plugin may be GitHub-only (instruction file)
+
+**Determine plugin type:**
+| Type | Check | Example |
+|------|-------|---------|
+| npm package | `npm view` returns version | `opencode-snip` → published |
+| Scoped npm | Has `@owner/` prefix | `@ramarivera/opencode-model-announcer` |
+| GitHub-only | `npm view` returns 404, repo exists | `opencode-shell-strategy` → clone repo |
+| Subpath trap | Contains `/` but not scoped | `oh-my-opencode-slim/tui` → NOT valid |
+
+**Important distinctions:**
+- Instruction plugins (markdown files) go in the `instructions` array, NOT the `plugin` array
+- Local JS plugins use relative paths: `./plugins/my-plugin.js`
+- Never add subpaths like `package/subpath` to the plugin array
+
 ### Step 2: Gather Current Configuration
 
 Read and analyze the existing OpenCode setup:
@@ -48,6 +70,31 @@ Fetch information about the new plugin:
 - Check for required post-install steps (installer commands, config creation)
 - Identify any agent or model dependencies
 
+### Step 3.5: Check Peer Dependencies
+
+After researching the plugin, check for peer dependency requirements:
+
+```bash
+# Check peer dependencies
+npm view {plugin-name} peerDependencies
+```
+
+**Common peer dependencies in OpenCode plugins:**
+- `@opencode-ai/plugin` — required by many community plugins
+- Specific version of `@opencode-ai/plugin` may be needed
+
+**Check if peers are satisfied:**
+- Look at `~/.config/opencode/package.json` for existing peer deps
+- If missing, flag as a pre-install requirement
+- Note: peer dependency conflicts cause `NpmInstallFailedError: unable to resolve dependency tree`
+
+**Risk flags:**
+| Peer Dep Status | Risk |
+|----------------|------|
+| All peers installed | Low |
+| Missing peer, but installable | Medium |
+| Peer version conflict with existing plugin | High |
+
 ### Step 4: Cross-Check Analysis
 
 Compare the new plugin against existing setup:
@@ -70,6 +117,29 @@ Compare the new plugin against existing setup:
 - Compare to existing functionality
 - Summarize net benefit
 
+### Step 4.5: Verify Paths and Config Placement
+
+Before presenting findings, verify the plugin will be configured correctly:
+
+**For npm plugins:**
+- Confirm installation path: `~/.config/opencode/node_modules/{plugin-name}/`
+- Verify it will be added to `plugin` array in `opencode.json`
+
+**For local plugins:**
+- Verify relative path is correct (from `~/.config/opencode/`)
+- Check for double-directory issues (e.g., `.opencode/.opencode/` is wrong)
+- Ensure file exists at the referenced path
+
+**For instruction plugins:**
+- Confirm they go in `instructions` array, not `plugin` array
+- Verify markdown file path is accessible
+
+**Common path errors:**
+```
+WRONG:  "plugin": ["file:///Users/.../.opencode/.opencode/graphify.js"]
+RIGHT:  "plugin": ["file:///Users/.../.opencode/plugins/graphify.js"]
+```
+
 ### Step 5: Present Findings
 
 Create a clear analysis report for the user:
@@ -90,6 +160,9 @@ Create a clear analysis report for the user:
 ### Risk Assessment
 | Factor | Status | Notes |
 |--------|--------|-------|
+| Package existence | Verified/Missing/GitHub-only | {npm check results} |
+| Peer dependencies | Satisfied/Missing/Conflict | {peer dep check} |
+| Path validity | Valid/Invalid | {config path check} |
 | Hook overlap | Low/Medium/High | {details} |
 | Command conflict | Low/Medium/High | {details} |
 | Model interaction | Low/Medium/High | {details} |
@@ -144,6 +217,20 @@ After installation:
 5. **Verify installation** - Confirm the plugin actually loads
 6. **Save learnings** - Use supermemory to record installation patterns
 
+## Common Failure Patterns
+
+Based on verified failures from May 2026:
+
+| Error | Root Cause | Fix |
+|-------|-----------|-----|
+| `GET registry.npmjs.org/... 404` | Wrong package name or GitHub-only | Check scoped name; check if GitHub-only |
+| `NpmInstallFailedError: unable to resolve dependency tree` | Peer dependency conflict | Check `npm view <pkg> peerDependencies` |
+| `Cannot find module '/path/to/plugin.js'` | Wrong path in config | Verify relative path from `~/.config/opencode/` |
+| `Plugin export is not a function` | Instruction file in `plugin` array | Move to `instructions` array |
+| Stale version despite `@latest` | Cache in `~/.cache/opencode/` | Clear cache: `rm -rf ~/.cache/opencode/node_modules/<pkg>` |
+| `opencode-supermemory` fails to load | Missing `@opencode-ai/plugin` peer dep | Ensure peer dependency is installed |
+| `opencode-ralph-wiggum` peer dep error | Missing `@opencode-ai/plugin` | Install peer dependency first |
+
 ## Common Hooks to Check
 
 - `tool.execute.before` - Runs before tool execution
@@ -153,11 +240,17 @@ After installation:
 
 ## Installation Command Reference
 
-| Package Manager | Command |
-|----------------|---------|
-| bun | `bun add {package}@latest` |
-| npm | `npm install {package}@latest` |
-| yarn | `yarn add {package}@latest` |
+| Purpose | Command |
+|---------|---------|
+| Verify package exists | `npm view {package} version` |
+| Check peer dependencies | `npm view {package} peerDependencies` |
+| Get full package info | `npm info {package} \| head -20` |
+| Search for similar names | `npm search {keyword} --limit 5` |
+| Install with bun | `bun add {package}@latest` |
+| Install with npm | `npm install {package}@latest` |
+| Install with yarn | `yarn add {package}@latest` |
+| Clear plugin cache | `rm -rf ~/.cache/opencode/node_modules/{package}` |
+| Verify install | `ls ~/.config/opencode/node_modules/{package}/` |
 
 ## Post-Install Patterns
 
