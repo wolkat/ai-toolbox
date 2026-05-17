@@ -30,6 +30,20 @@ Project: `.opencode/command/`
 Global: `~/.claude/skills/`
 Project: `.claude/skills/`
 
+## Standards
+
+### Timestamp Format
+
+When creating files with timestamps:
+
+1. **Always use real current time:** Execute `date +%Y-%m-%d_%H%M` at the moment of creation
+2. **Never use session context time** (which may be stale)
+3. **Format:** `YYYY-MM-DD_HHMM` (e.g., `2026-05-17_2028`)
+4. **Use this format for:**
+   - Retro report filenames (`data/{timestamp}.json` and `.md`)
+   - Log file rotations
+   - Any session artifacts
+
 ## Maintenance
 
 To update skills from this repo to your local config:
