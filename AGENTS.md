@@ -44,6 +44,61 @@ When creating files with timestamps:
    - Log file rotations
    - Any session artifacts
 
+## Git Commit Rules
+
+All commits in this repo (and all repos where AI assists) must follow these rules:
+
+### 1. Atomic Commits
+- One logical change per commit
+- If you need "and" in the commit message, split it into multiple commits
+
+### 2. Conventional Commits Format
+```
+type(scope): description
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:** `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `style`, `ci`
+
+### 3. Co-Author Attribution (CRITICAL)
+
+**Rule:** Always use the model declared in the system prompt, **never** the model from `opencode.json` provider config.
+
+| Wrong | Correct |
+|-------|---------|
+| `Co-authored-by: opencode (minimax-m2.5-free)` | `Co-authored-by: opencode (kimi-k2.6)` |
+
+**Why:** `opencode.json` configures which model the OpenCode app calls for chat. The `Co-authored-by` line must reflect the **actual model generating the code** — which is declared in the system prompt at session start. These are often different.
+
+**How to determine the correct model:**
+- Check the system prompt line: `You are powered by the model named X`
+- Or check: `The exact model ID is Y`
+- Current model: **kimi-k2.6** (exact: `opencode-go/kimi-k2.6`)
+
+### 4. Required Trailers
+```
+Signed-off-by: <your name>
+Co-authored-by: opencode (<actual model>)
+```
+
+### 5. Enforcement
+Use the helper tools:
+```bash
+# Quick commit with auto-generated co-author
+gac "feat: add new feature"
+
+# Or use the script directly
+ai-toolbox/scripts/commit-with-coauthor.sh "feat: add new feature"
+```
+
+Or set up globally once:
+```bash
+bash ai-toolbox/scripts/setup-coauthor.sh
+```
+
 ## Maintenance
 
 To update skills from this repo to your local config:
