@@ -8,6 +8,16 @@
  * Stored in ai-toolbox, symlinked to ~/.config/opencode/plugins/
  */
 
+import { appendFileSync } from 'node:fs';
+
+const LOG_FILE = '/Users/katops/.local/share/opencode/agent-logger.log';
+
+function logToFile(line) {
+  try {
+    appendFileSync(LOG_FILE, `${new Date().toISOString()} ${line}\n`);
+  } catch {}
+}
+
 const KNOWN_AGENTS = new Set([
   'orchestrator',
   'oracle',
@@ -34,9 +44,9 @@ export default async () => {
      * Log session creation (debug level)
      */
     'session.created': async (input) => {
-      console.log(
-        `\x1b[90m[agent-logger] Session ${input?.sessionID?.slice(0, 8) ?? 'unknown'} created\x1b[0m`,
-      );
+      const line = `[agent-logger] Session ${input?.sessionID?.slice(0, 8) ?? 'unknown'} created`;
+      console.log(`\x1b[90m${line}\x1b[0m`);
+      logToFile(line);
     },
 
     /**
@@ -49,9 +59,9 @@ export default async () => {
 
       const color = getAgentColor(role);
       const tag = KNOWN_AGENTS.has(role) ? '[AGENT]' : '[AGENT?]';
-      console.log(
-        `${color}${tag}\x1b[0m \x1b[1m${role.toUpperCase()}\x1b[0m activated`,
-      );
+      const line = `${tag} ${role.toUpperCase()} activated (message.updated)`;
+      console.log(`${color}${line}\x1b[0m`);
+      logToFile(line);
     },
 
     /**
@@ -71,9 +81,9 @@ export default async () => {
 
       const color = getAgentColor(name);
       const tag = KNOWN_AGENTS.has(name) ? '[AGENT]' : '[AGENT?]';
-      console.log(
-        `${color}${tag}\x1b[0m \x1b[1m${name.toUpperCase()}\x1b[0m activated (via ${tool})`,
-      );
+      const line = `${tag} ${name.toUpperCase()} activated (via ${tool})`;
+      console.log(`${color}${line}\x1b[0m`);
+      logToFile(line);
     },
   };
 };
