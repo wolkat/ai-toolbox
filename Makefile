@@ -1,4 +1,5 @@
 STOW_PACKAGES := opencode
+TARGET := $(HOME)/.config/opencode
 
 .PHONY: install uninstall status restow check help
 
@@ -8,11 +9,11 @@ check:
 	@echo "Setup verified"
 
 install: check
-	@stow -t ~ $(STOW_PACKAGES)
-	@echo "Installed: $(STOW_PACKAGES)"
+	@stow -t $(TARGET) $(STOW_PACKAGES)
+	@echo "Installed: $(STOW_PACKAGES) -> $(TARGET)"
 
 uninstall:
-	@stow -D $(STOW_PACKAGES)
+	@stow -t $(TARGET) -D $(STOW_PACKAGES)
 	@echo "Uninstalled: $(STOW_PACKAGES)"
 
 restow: uninstall install
@@ -20,13 +21,15 @@ restow: uninstall install
 
 status:
 	@echo "Package: $(STOW_PACKAGES)"
-	@echo "Target: ~"
+	@echo "Target: $(TARGET)"
 	@echo ""
 	@echo "Symlinks:"
-	@find opencode -type f | while read f; do \
-		dst="$${f#opencode/}"; \
-		if [ -L "$$HOME/$$dst" ]; then \
+	@find opencode -type d | while read d; do \
+		dst="$${d#opencode/}"; \
+		if [ -L "$(TARGET)/$$dst" ]; then \
 			echo "  -> $$dst"; \
+		elif [ -e "$(TARGET)/$$dst" ]; then \
+			echo "  ++ $$dst (real dir)"; \
 		else \
 			echo "  !! $$dst (not linked)"; \
 		fi; \
