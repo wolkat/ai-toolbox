@@ -51,6 +51,22 @@ Before implementation starts, review requirements against the plan:
 
 **If missing any requirement, do not proceed to implementation.** Add to implementation plan first.
 
+### Step 0.6: Pre-Execution Validation (From Retro Learnings)
+
+Before any tool call execution, verify these constraints (based on recurring session issues):
+
+1. **Path format check** — Read/Edit/Write tools require absolute paths
+   - ❌ `~/.config/...` — tilde does NOT expand
+   - ✅ `/Users/katops/.config/...` — absolute path
+   
+2. **Command separation check** — Bash tool: one concern per call
+   - ❌ `echo "header" && grep pattern file` — combining unrelated commands
+   - ✅ Separate `echo` and `grep` into individual tool calls
+   
+3. **Interactive safety check** — All bash commands must be non-interactive
+   - No `vim`, `less`, `man`, interactive `git` commands
+   - Use `-y`, `--yes`, `--non-interactive`, `-f` flags where available
+
 Ask user for:
 - What tasks were attempted?
 - What worked on first try?

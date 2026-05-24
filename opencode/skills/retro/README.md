@@ -88,6 +88,13 @@ Example backlog format:
 - [ ] Document common root causes
 ```
 
+### Pre-Execution Validation (Recommended)
+
+Before executing tool calls, verify:
+1. **Path format** — Read/Edit/Write require absolute paths (`/Users/...` not `~/.`)
+2. **Command separation** — Unrelated bash commands belong in separate tool calls
+3. **Interactive safety** — All bash commands must be non-interactive (no TTY, no prompts)
+
 ---
 
 ## Data Location
