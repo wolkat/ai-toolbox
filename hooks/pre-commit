@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Pre-commit hook: Lint SKILL.md files before commit
+# Install: Run scripts/install-hooks.sh or git config core.hooksPath hooks
+
+set -euo pipefail
+
+# Find staged SKILL.md files (Added, Copied, Modified - not Deleted)
+staged_skill_files=$(git diff --cached --name-only --diff-filter=ACM | grep 'SKILL\.md$' || true)
+
+if [[ -z "$staged_skill_files" ]]; then
+    # No SKILL.md files changed - silently pass
+    exit 0
+fi
+
+# Track failures
+failed=0
+passed_count=0
+
+# Get repo root for relative paths
+repo_root="$(git rev-parse --show-toplevel)"
+
+while IFS= read -r file; do
+    skill_dir="$(dirname "$file")"
+    skill_name="$(basename "$skill_dir")"
+
+    # Run lint from repo root
+    if "$repo_root/scripts/lint-skill.sh" "$skill_dir" 2>&1; then
+        passed_count=$((passed_count + 1))
+    else
+        failed=$((failed + 1))
+        echo "❌ Skill lint failed for $skill_dir. Fix errors or commit with --no-verify."
+    fi
+done <<< "$staged_skill_files"
+
+if [[ $failed -gt 0 ]]; then
+    echo ""
+    echo "Blocking commit due to $failed skill(s) with lint errors."
+    exit 1
+fi
+
+echo "✅ $passed_count skill(s) passed lint."
+exit 0
