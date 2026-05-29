@@ -1,0 +1,12 @@
+# Runtime / generated artifacts
+.omo/
+_bmad/
+_bmad-output/
+.opencode/node_modules/
+node_modules/
+
+# Duplicate skill trees (single-sourced via .agents/)
+.claude/
+
+# OS artifacts
+.DS_Store
