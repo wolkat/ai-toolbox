@@ -7,6 +7,7 @@ node_modules/
 
 # BMAD skills (installed locally, not project source)
 .agents/skills/bmad-*/
+.claude/skills/bmad-*/
 
 # OS artifacts
 .DS_Store
