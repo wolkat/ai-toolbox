@@ -15,6 +15,9 @@ ai-toolbox/
 │   ├── skills/          # SKILL.md files
 │   ├── commands/        # Slash commands
 │   └── agents/         # Agent definitions
+├── codex/              # Codex CLI configs
+│   ├── skills/          # SKILL.md files
+│   └── agents/         # Agent definitions
 ├── scripts/            # Shared scripts
 ├── hooks/              # Git hooks, tool hooks
 └── templates/          # Reusable templates
@@ -56,6 +59,28 @@ cp -r claude/skills/* ~/.claude/skills/
 cp claude/commands/*.md ~/.claude/commands/
 ```
 
+### Codex CLI (via stow)
+
+```bash
+cd ~/git/ai-toolbox
+make install-codex    # symlink codex items to ~/.codex/
+make restow           # refresh symlinks after adding new directories
+make status           # check symlink state
+```
+
+### Codex CLI (manual)
+
+```bash
+# Global AGENTS.md
+cp codex/AGENTS.md ~/.codex/AGENTS.md
+
+# Skills
+cp -r codex/skills/* ~/.codex/skills/
+
+# Project-level skills (in any repo)
+cp -r codex/skills/* .agents/skills/
+```
+
 ## Included
 
 ### OpenCode Skills
@@ -72,6 +97,11 @@ cp claude/commands/*.md ~/.claude/commands/
 ### OpenCode Plugins
 
 - **agent-logger** — Log agent activations to console
+
+### Codex CLI
+
+- **AGENTS.md** — Global instructions for Codex sessions (`~/.codex/AGENTS.md`)
+- **skills/** — Skill definitions for natural-language activation via `$skill-name`
 
 ## Contributing
 
