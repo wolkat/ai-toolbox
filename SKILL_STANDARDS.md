@@ -189,6 +189,17 @@ Rules:
 
 ---
 
+## Copilot Instruction Files
+
+Copilot instruction files (stowed to ~/.copilot/) provide Copilot CLI with global and path-scoped instructions. Add the following conventions when authoring skills that include Copilot instructions:
+
+- Location & stow: place files under `copilot/` in the project; the stow package maps to `~/.copilot/` on install.
+- Global file: `copilot-instructions.md` is the lightweight global pointer (stowed to `~/.copilot/copilot-instructions.md`). Keep it minimal and use it to reference path-scoped instruction files and cross-read locations (e.g., `~/.codex/memories/`).
+- Path-scoped files: place under `copilot/instructions/` and name them `*.instructions.md`. Include YAML frontmatter (example: `applyTo: "**"`) and a concise workflow. These files are read by Copilot CLI for contextual behavior.
+- Command generation: instruction files MUST NOT attempt to write files automatically. Instead, include example shell commands that users can run (e.g., `mkdir -p ~/.copilot/memories && cat > ~/.copilot/memories/save-$(date +%F_%H%M).md <<'EOF' ... EOF`).
+- Filenames: use the `.instructions.md` suffix to distinguish instruction files from SKILL.md and README.md.
+- Documentation: SKILL.md and README.md should reference any instruction files and the expected stow installation.
+
 ## Related
 
 - [AGENTS.md](./AGENTS.md) — Project conventions and commit rules
