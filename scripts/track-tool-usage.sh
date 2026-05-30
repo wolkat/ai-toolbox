@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -eo pipefail
 export LC_ALL=C
 
 # Configuration
@@ -12,7 +12,7 @@ TIMEOUT_NPM="${TIMEOUT_NPM:-30}"
 # Project directories to scan for node_modules/.bin/
 PROJECT_DIRS=(
   "/Users/katops/git/projects/panikaogarnia/lifebinder"
-  "/Users/katops/git/projects/ArchiveAgentKit"
+  "/Users/katops/git/projects/Comber"
   "/Users/katops/git/projects/ai-toolbox"
 )
 
@@ -313,7 +313,7 @@ resolve_binary() {
   fi
 
   if [[ "$path" == /* ]]; then
-    realpath "$path" 2>/dev/null || echo "$path"
+    python3 -c "import os; print(os.path.realpath('$path'))" 2>/dev/null || echo "$path"
   else
     local cmd_type
     cmd_type=$(type -t "$cmd" 2>/dev/null || true)
