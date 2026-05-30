@@ -1,0 +1,42 @@
+name: Bug Report
+description: Report a problem with ai-toolbox
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Commit / version
+      placeholder: e.g. main@abc123
+    validations:
+      required: true
+  - type: input
+    id: tooling
+    attributes:
+      label: AI tooling
+      description: Which agent tools are affected?
+      placeholder: e.g. OpenCode, Claude Code, Codex CLI
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: e.g. macOS 15.7, Linux
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. make install
+        2. ...
+    validations:
+      required: true

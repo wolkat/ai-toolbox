@@ -1,5 +1,7 @@
 # ai-toolbox
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Collection of locally-created configs, skills, commands, and tools for AI coding agents.
 
 ## Structure
@@ -105,10 +107,12 @@ cp -r codex/skills/* .agents/skills/
 
 ## Contributing
 
-Add your own skills, commands, or configs to the appropriate directory and submit a PR.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
 
-See [SKILL_STANDARDS.md](./SKILL_STANDARDS.md) for quality criteria.
+## Security
+
+Report vulnerabilities via [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
