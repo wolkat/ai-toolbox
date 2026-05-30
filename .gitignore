@@ -5,8 +5,8 @@ _bmad-output/
 .opencode/node_modules/
 node_modules/
 
-# Duplicate skill trees (single-sourced via .agents/)
-.claude/
+# BMAD skills (installed locally, not project source)
+.agents/skills/bmad-*/
 
 # OS artifacts
 .DS_Store
