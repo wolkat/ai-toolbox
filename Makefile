@@ -1,6 +1,7 @@
-STOW_PACKAGES := opencode codex
+STOW_PACKAGES := opencode codex copilot
 TARGET := $(HOME)/.config/opencode
 CODEX_TARGET := $(HOME)/.codex
+COPILOT_TARGET := $(HOME)/.copilot
 
 .PHONY: install uninstall status restow check help
 
@@ -8,13 +9,16 @@ check:
 	@command -v stow >/dev/null 2>&1 || (echo "stow not installed" && exit 1)
 	@test -d opencode || (echo "opencode package not found" && exit 1)
 	@test -d codex || (echo "codex package not found" && exit 1)
+	@test -d copilot || (echo "copilot package not found" && exit 1)
 	@echo "Setup verified"
 
 install: check
 	@stow -t $(TARGET) opencode
 	@stow -t $(CODEX_TARGET) codex
+	@stow -t $(COPILOT_TARGET) copilot
 	@echo "Installed: opencode -> $(TARGET)"
 	@echo "Installed: codex -> $(CODEX_TARGET)"
+	@echo "Installed: copilot -> $(COPILOT_TARGET)"
 
 install-opencode:
 	@stow -t $(TARGET) opencode
@@ -24,11 +28,17 @@ install-codex:
 	@stow -t $(CODEX_TARGET) codex
 	@echo "Installed: codex -> $(CODEX_TARGET)"
 
+install-copilot:
+	@stow -t $(COPILOT_TARGET) copilot
+	@echo "Installed: copilot -> $(COPILOT_TARGET)"
+
 uninstall:
 	@stow -t $(TARGET) -D opencode
 	@stow -t $(CODEX_TARGET) -D codex
+	@stow -t $(COPILOT_TARGET) -D copilot
 	@echo "Uninstalled: opencode"
 	@echo "Uninstalled: codex"
+	@echo "Uninstalled: copilot"
 
 uninstall-opencode:
 	@stow -t $(TARGET) -D opencode
@@ -38,14 +48,21 @@ uninstall-codex:
 	@stow -t $(CODEX_TARGET) -D codex
 	@echo "Uninstalled: codex"
 
+uninstall-copilot:
+	@stow -t $(COPILOT_TARGET) -D copilot
+	@echo "Uninstalled: copilot"
+
 restow: uninstall install
-	@echo "Restowed: opencode, codex"
+	@echo "Restowed: opencode, codex, copilot"
 
 restow-opencode: uninstall-opencode install-opencode
 	@echo "Restowed: opencode"
 
 restow-codex: uninstall-codex install-codex
 	@echo "Restowed: codex"
+
+restow-copilot: uninstall-copilot install-copilot
+	@echo "Restowed: copilot"
 
 status:
 	@echo "=== OpenCode ==="
@@ -114,6 +131,23 @@ status-codex:
 		fi; \
 	done
 
+status-copilot:
+	@echo "=== Copilot ==="
+	@echo "Package: copilot"
+	@echo "Target: $(COPILOT_TARGET)"
+	@echo ""
+	@echo "Symlinks:"
+	@find copilot -type d | while read d; do \
+		dst="$${d#copilot/}"; \
+		if [ -L "$(COPILOT_TARGET)/$$dst" ]; then \
+			echo "  -> $$dst"; \
+		elif [ -e "$(COPILOT_TARGET)/$$dst" ]; then \
+			echo "  ++ $$dst (real dir)"; \
+		else \
+			echo "  !! $$dst (not linked)"; \
+		fi; \
+	done
+
 help:
 	@echo "ai-toolbox stow commands:"
 	@echo "  make install        - symlink opencode + codex to ~"
@@ -129,3 +163,7 @@ help:
 	@echo "  make status-opencode   - show opencode symlink status"
 	@echo "  make status-codex      - show codex symlink status"
 	@echo "  make check          - verify stow + packages"
+	@echo "  make install-copilot   - symlink copilot to ~/.copilot"
+	@echo "  make uninstall-copilot - remove copilot symlinks"
+	@echo "  make restow-copilot    - refresh copilot symlinks"
+	@echo "  make status-copilot    - show copilot symlink status"
