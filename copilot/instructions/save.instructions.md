@@ -1,5 +1,5 @@
 ---
-applyTo: "**"
+applyTo: "*.{md,ts,js,py,sh,yaml,yml,json,toml}"
 ---
 
 # Save skill (Copilot instructions)
@@ -13,3 +13,5 @@ Workflow:
 Notes:
 - Do NOT write files automatically. Always output a shell command for user to review and run.
 - Ensure `mkdir -p ~/.copilot/memories` appears in generated commands.
+- Cross-read: also check `~/.codex/memories/` for relevant context from Codex sessions.
+- Periodic suggestion: at end of productive sessions or during long sessions with significant discoveries, suggest saving learnings to the user.

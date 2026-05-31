@@ -4,7 +4,7 @@ export LC_ALL=C
 
 # Configuration
 HISTORY_FILE="${HISTORY_FILE:-}"
-OUTPUT_FILE="${OUTPUT_FILE:-docs/ideas/tool-usage-report.md}"
+OUTPUT_FILE="${OUTPUT_FILE:-docs/tool-usage-report.md}"
 TOP_N="${TOP_N:-20}"
 TIMEOUT_PER_TOOL="${TIMEOUT_PER_TOOL:-10}"
 TIMEOUT_NPM="${TIMEOUT_NPM:-30}"
@@ -31,7 +31,7 @@ Track terminal tool usage and dependencies from shell history.
 OPTIONS:
   --help           Show this help message
   --history-file   Path to shell history file (default: from HISTFILE env)
-  --output         Output report path (default: docs/ideas/tool-usage-report.md)
+  --output         Output report path (default: docs/tool-usage-report.md)
   --top-n          Number of top tools to report (default: 20)
 
 EXAMPLES:
@@ -665,7 +665,94 @@ generate_report() {
     echo ""
   } >> "$output_file"
 
+  _compute_trends "$output_file" >> "$output_file"
+
   rm -f "$data_tmp" "$prev_tools_tmp" "$current_tools_tmp" "$source_breakdown_tmp"
+}
+
+_compute_trends() {
+  local report_file="$1"
+
+  local total_runs
+  total_runs=$(grep -c '^## Report:' "$report_file" 2>/dev/null || echo 0)
+  if [[ "$total_runs" -le 1 ]]; then
+    return
+  fi
+
+  python3 -c "
+import sys, re
+
+report_file = '$report_file'
+try:
+    with open(report_file) as f:
+        content = f.read()
+except FileNotFoundError:
+    sys.exit(0)
+
+sections = re.split(r'^## Report: ', content, flags=re.MULTILINE)
+sections = [s for s in sections if s.strip()]
+
+if len(sections) <= 1:
+    sys.exit(0)
+
+runs = []
+for section in sections[1:]:
+    lines = section.strip().split('\n')
+    timestamp = lines[0].strip()
+    in_table = False
+    commands = {}
+    for line in lines:
+        if '### Top' in line and 'Commands' in line:
+            in_table = True
+            continue
+        if in_table and line.startswith('### '):
+            break
+        if in_table and line.startswith('|') and 'Rank' not in line and '---' not in line:
+            parts = [p.strip() for p in line.split('|')]
+            if len(parts) >= 5:
+                cmd = parts[2]
+                freq = parts[3]
+                if cmd and freq and cmd != 'Command':
+                    try:
+                        commands[cmd] = int(freq)
+                    except ValueError:
+                        pass
+    if commands:
+        runs.append({'timestamp': timestamp, 'commands': commands})
+
+if len(runs) <= 1:
+    sys.exit(0)
+
+first = runs[0]
+last = runs[-1]
+
+first_date = first['timestamp'].split()[0]
+last_date = last['timestamp'].split()[0]
+
+print()
+print('### Usage Trends')
+print()
+print(f'- **Total runs:** {len(runs)}')
+print(f'- **Date range:** {first_date} to {last_date}')
+print(f'- **Tools in first run:** {len(first[\"commands\"])}')
+print(f'- **Tools in latest run:** {len(last[\"commands\"])}')
+print()
+print('| Tool | First Freq | Latest Freq | Trend |')
+print('|------|-----------|-------------|-------|')
+
+for cmd, freq in sorted(last['commands'].items(), key=lambda x: x[1], reverse=True):
+    first_freq = first['commands'].get(cmd)
+    if first_freq is not None:
+        if freq > first_freq:
+            trend = 'up'
+        elif freq < first_freq:
+            trend = 'down'
+        else:
+            trend = 'stable'
+        print(f'| {cmd} | {first_freq} | {freq} | {trend} |')
+    else:
+        print(f'| {cmd} | (new) | {freq} | up |')
+" 2>/dev/null || true
 }
 
 # CLI argument parsing
