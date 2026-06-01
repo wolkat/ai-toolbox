@@ -74,6 +74,13 @@ todo-scan --source 6,7
 - **Code TODOs**: includes matches in comments and string literals. Treat as
   candidates, not authoritative.
 
+## Interpretation Patterns (2026-06-01 session learnings)
+
+- **Empty uncommitted + high checkbox count**: repo is clean but has planned work. Triage by reading the backlog files.
+- **lifebinder _bmad-output/ planning artifacts**: these can have 100+ unchecked items (implementation-plan.md had 103). This is normal for BMAD output; treat as reference, not immediate action items.
+- **Comber docs/release-strategy.md**: release checklist with ~11 items; common gate for shipping.
+- **.github untracked files**: agents/ and copilot-instructions.md are legitimate config, not artifacts. Stage and commit them.
+
 ## Your Task
 
 1. Run `todo-scan` (with flags if the user asked for specifics)
@@ -100,6 +107,17 @@ If the scope is unclear, ask:
 - `awk` for table rendering.
 - macOS bash 3.2 compatibility: no `mapfile`, no `${var,,}`, no associative
   arrays. Use `tr '[:upper:]' '[:lower:]'` for case folding.
+
+## Known Issues
+
+- Section 6 (checkboxes) may emit rows with count=0 and empty fields when
+  a backlog file exists but contains no `- [ ]` lines. The
+  `find_backlog_files` function lists all backlog candidates regardless of
+  checkbox content, and the rendering pipeline does not filter these out.
+  Disregard rows where `[ ] count` column is 0 or blank.
+- Multi-column sample text in section 6 may wrap across table rows due to
+  comma/pipe characters in the sample data. Read sample items as a
+  continuous block, not split per row.
 
 ## Notes
 
