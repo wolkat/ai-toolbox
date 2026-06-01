@@ -21,3 +21,7 @@ Major incidents that informed these guidelines:
   `dist/index.js`; OpenCode cannot load raw `.ts`. See `docs/opencode/plugins.md`.
 - **2026-05-??** — Stale `package-lock.json` from `npm install` silently broke
   OpenCode's background installer. See `docs/opencode/plugins.md`.
+- **2026-06-01** — `permission.skill.deny` hides skills from the agent's
+  tool description but NOT from the TUI `/` picker. To hide from the picker,
+  rename the discovery path directory (e.g. `~/.agents/` → `~/.agents-disabled/`).
+  See `docs/opencode/agents-skills.md`.

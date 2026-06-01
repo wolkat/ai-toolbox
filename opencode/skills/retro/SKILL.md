@@ -134,7 +134,7 @@ To automatically identify session tasks:
    sqlite3 ~/.local/share/opencode/opencode.db "
      SELECT id, title, time_created, agent, model
      FROM session
-     WHERE time_created > <since_timestamp>
+      WHERE time_created > strftime('%s', 'now', '-14 days')
      ORDER BY time_created DESC
    "
    ```

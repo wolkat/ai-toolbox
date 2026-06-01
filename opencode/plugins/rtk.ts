@@ -29,10 +29,11 @@ export const RtkOpenCodePlugin: Plugin = async ({ $ }) => {
         const result = await $`rtk rewrite ${command}`.quiet().nothrow()
         const rewritten = String(result.stdout).trim()
         if (rewritten && rewritten !== command) {
+          console.warn(`[rtk] Rewrote: ${command} → ${rewritten}`)
           ;(args as Record<string, unknown>).command = rewritten
         }
-      } catch {
-        // rtk rewrite failed — pass through unchanged
+      } catch (e) {
+        console.warn(`[rtk] rewrite failed: ${e}`)
       }
     },
   }

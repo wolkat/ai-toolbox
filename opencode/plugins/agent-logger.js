@@ -10,12 +10,14 @@
 
 import { appendFileSync } from 'node:fs';
 
-const LOG_FILE = '/Users/katops/.local/share/opencode/agent-logger.log';
+const LOG_FILE = `${process.env.HOME}/.local/share/opencode/agent-logger.log`;
 
 function logToFile(line) {
   try {
     appendFileSync(LOG_FILE, `${new Date().toISOString()} ${line}\n`);
-  } catch {}
+  } catch (e) {
+    console.warn(`[agent-logger] Failed to write to ${LOG_FILE}: ${e.message}`);
+  }
 }
 
 const KNOWN_AGENTS = new Set([

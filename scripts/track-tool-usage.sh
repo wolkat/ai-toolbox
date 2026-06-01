@@ -313,7 +313,7 @@ resolve_binary() {
   fi
 
   if [[ "$path" == /* ]]; then
-    python3 -c "import os; print(os.path.realpath('$path'))" 2>/dev/null || echo "$path"
+    python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "$path" 2>/dev/null || echo "$path"
   else
     local cmd_type
     cmd_type=$(type -t "$cmd" 2>/dev/null || true)
@@ -679,10 +679,10 @@ _compute_trends() {
     return
   fi
 
-  python3 -c "
-import sys, re
+  REPORT_FILE="$report_file" python3 -c "
+import sys, re, os
 
-report_file = '$report_file'
+report_file = os.environ['REPORT_FILE']
 try:
     with open(report_file) as f:
         content = f.read()

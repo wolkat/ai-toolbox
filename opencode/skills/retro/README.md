@@ -17,7 +17,7 @@ Analyzes OpenCode sessions to extract learnings, measure reasoning quality, and 
 
 ### Output
 - Structured retrospective report (Markdown)
-- JSON file in `~/.local/share/opencode/retro/` with metrics
+- JSON file in `~/git/docs/learnings/` (project-tracked) or `~/.local/share/opencode/retro/` (XDG fallback)
 - Auto-added to supermemory for searchable context
 
 ---
@@ -38,7 +38,7 @@ Analyzes OpenCode sessions to extract learnings, measure reasoning quality, and 
 
 ```
 Session → /retro → Report (Markdown)
-                → JSON → ~/.local/share/opencode/retro/{timestamp}.json
+                → JSON → ~/git/docs/learnings/{timestamp}.json
                 → Supermemory (searchable)
 ```
 
@@ -70,7 +70,7 @@ Run `/retro` periodically → compare outputs → track trends manually.
 
 > User types `/retro`
 
-→ Skill loads → asks about session tasks → analyzes → generates report → saves to `~/.local/share/opencode/retro/` → adds summary to supermemory
+→ Skill loads → asks about session tasks → analyzes → generates report → saves to `~/git/docs/learnings/` → adds summary to supermemory
 
 See [SKILL.md](./SKILL.md) for full implementation details.
 
@@ -101,7 +101,7 @@ Before executing tool calls, verify:
 
 | Type | Location | Notes |
 |------|----------|-------|
-| JSON reports | `~/.local/share/opencode/retro/` | XDG Data Directory; set `$XDG_DATA_HOME` to override |
+| JSON reports | `~/git/docs/learnings/` | Project-tracked; XDG fallback: `~/.local/share/opencode/retro/` |
 | Searchable context | Supermemory (global scope) | |
 | Raw logs | `~/.local/share/opencode/log/` | |
 
@@ -113,8 +113,8 @@ This skill is part of ai-toolbox. To update to local config:
 
 ```bash
 # If using stow
-cd ~/git/ai-toolbox && make restow
+cd ~/git/projects/ai-toolbox && make restow-opencode
 
 # Or manual copy
-cp -r ~/git/ai-toolbox/opencode/skills/retro ~/.config/opencode/skills/
+cp -r ~/git/projects/ai-toolbox/opencode/skills/retro ~/.config/opencode/skills/
 ```

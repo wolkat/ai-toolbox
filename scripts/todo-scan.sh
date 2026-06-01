@@ -18,10 +18,11 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 ROOT="${HOME}/git"
-MAX_DEPTH=2
+MAX_DEPTH=3
 STALE_DAYS=90
 SOURCE_FILTER=""
 REPO_FILTER=""
+INCLUDE_DIRS="projects,.github"
 WRITE_PATH=""
 QUIET=0
 
@@ -119,12 +120,13 @@ Scan git repos under ROOT for unfinished work and emit a markdown report.
 
 Options:
   --root <path>       Scan root directory (default: ~/git)
+  --include-dir <list>  Comma-separated subdirs of ROOT to scan (default: projects,.github)
   --repo <name>       Comma-separated repo names to limit scan (default: all)
   --source <n>        Run only data source N (1-7, default: all)
                       1=uncommitted  2=stash  3=code-TODOs  4=stale-branches
                       5=backlog-files  6=checkboxes  7=status-tracked
   --stale <days>      Stale-branch threshold in days (default: 90)
-  --max-depth <n>     Repo discovery depth (default: 2)
+  --max-depth <n>     Repo discovery depth below each --include-dir (default: 3)
   --write <path>      Write report to path instead of stdout
   --quiet             Suppress progress messages on stderr
   -h, --help          Show this help
@@ -158,6 +160,11 @@ parse_args() {
       --root)
         [ $# -ge 2 ] || { err "--root requires a value"; exit 2; }
         ROOT="$2"
+        shift 2
+        ;;
+      --include-dir)
+        [ $# -ge 2 ] || { err "--include-dir requires a value"; exit 2; }
+        INCLUDE_DIRS="$2"
         shift 2
         ;;
       --repo)
@@ -212,11 +219,17 @@ discover_repos() {
     err "root does not exist: $ROOT"
     return 1
   fi
-  find "$ROOT" -maxdepth "$MAX_DEPTH" -name .git -type d 2>/dev/null \
-    | while read -r gitdir; do
-        dirname "$gitdir"
-      done \
-    | sort
+  # Iterate over INCLUDE_DIRS as separate find roots. Each is a top-level
+  # subdirectory of ROOT that contains the repos to scan.
+  local dir
+  local IFS=','
+  for dir in $INCLUDE_DIRS; do
+    [ -d "$ROOT/$dir" ] || continue
+    find "$ROOT/$dir" -maxdepth "$MAX_DEPTH" -name .git -type d 2>/dev/null \
+      | while read -r gitdir; do
+          dirname "$gitdir"
+        done
+  done | sort
 }
 
 # Filter discovered repos against --repo list (comma-separated basenames).
@@ -264,7 +277,8 @@ source_enabled() {
 scan_uncommitted() {
   local repo="$1"
   local branch
-  branch=$(git -C "$repo" branch --show-current 2>/dev/null || echo "(detached)")
+  branch=$(git -C "$repo" branch --show-current 2>/dev/null || true)
+  branch="${branch:-detached}"
   local porcelain
   porcelain=$(git -C "$repo" status --porcelain 2>/dev/null || true)
   if [ -z "$porcelain" ]; then
@@ -276,18 +290,22 @@ scan_uncommitted() {
     [ -z "$line" ] && continue
     local x="${line:0:1}"
     local y="${line:1:1}"
-    case "$x$y" in
-      ??*) u=$((u + 1)) ;;
-      U*|*U|*AA|*DD) c=$((c + 1)) ;;
-      *) case "$x" in
-           M|A|T|D|R|C) a=$((a + 1)) ;;
-           *) case "$y" in
-                M|A|T|D) m=$((m + 1)) ;;
-              esac
-              ;;
-         esac
-         ;;
-    esac
+    # Untracked: both columns are '?'
+    if [ "$x" = "?" ] && [ "$y" = "?" ]; then
+      u=$((u + 1))
+    # Conflicted: 'U' in either position, or AA/DD (both sides add/delete)
+    elif [ "$x" = "U" ] || [ "$y" = "U" ] || [ "$x$y" = "AA" ] || [ "$x$y" = "DD" ]; then
+      c=$((c + 1))
+    else
+      # Staged change (index column): M/A/T/D/R/C
+      case "$x" in
+        M|A|T|D|R|C) a=$((a + 1)) ;;
+      esac
+      # Worktree change: M/A/T/D
+      case "$y" in
+        M|A|T|D) m=$((m + 1)) ;;
+      esac
+    fi
   done <<EOF
 $porcelain
 EOF
@@ -327,23 +345,10 @@ scan_stash() {
 # Data source 3: Code TODOs / FIXMEs
 # ---------------------------------------------------------------------------
 
-# Build find -prune expression for excluded directories.
-build_exclude_prune() {
-  local first=1
-  printf " \\( "
-  for d in "${TODO_EXCLUDE_DIRS[@]}"; do
-    if [ $first -eq 1 ]; then
-      first=0
-    else
-      printf " -o "
-    fi
-    printf "-name %s" "$d"
-  done
-  printf " \\) -prune -o"
-}
-
-# Build the -name OR chain for source extensions.
-build_ext_or() {
+# Build the -name OR chain for source extensions, wrapped in \( ... \)
+# so find operator precedence works correctly.
+build_ext_group() {
+  printf "\\( "
   local first=1
   for ext in "${TODO_EXTS[@]}"; do
     if [ $first -eq 1 ]; then
@@ -353,50 +358,58 @@ build_ext_or() {
     fi
     printf "-name '*.%s'" "$ext"
   done
+  printf " \\)"
 }
 
+# Build a -path OR chain of source-extension files, restricted to non-pruned trees.
 scan_code_todos() {
   local repo="$1"
-  local relpath
-  relpath="${repo#${ROOT}/}"
-  relpath="${relpath%/}"
-  [ -z "$relpath" ] && relpath="."
+  local ext_group
+  ext_group=$(build_ext_group)
 
-  local prune
-  prune=$(build_exclude_prune)
-  local exts
-  exts=$(build_ext_or)
+  # Use eval to expand the dynamic find expression.
+  # Operator-precedence-safe: \( -prune-set \) -o -type f \( -name-group \) -print
+  local files
+  files=$(eval find "'$repo'" \
+    "'('" -path "'*/node_modules'" -o -path "'*/.git'" -o -path "'*/dist'" -o -path "'*/build'" -o -path "'*/out'" -o -path "'*/.next'" -o -path "'*/.cache'" -o -path "'*/.output'" -o -path "'*/.vite'" -o -path "'*/coverage'" -o -path "'*/outputs'" -o -path "'*/vendor'" -o -path "'*/target'" -o -path "'*/_bmad'" -o -path "'*/_bmad-output'" "')'" -prune -o -type f "$ext_group" -print 2>/dev/null)
 
-  # Use eval to expand the dynamic find expression (bash 3.2 safe).
-  # Output: file:lineno:marker (per marker, capped per file at top 5).
-  local counts
-  counts=$(eval find "'$repo'" $prune -type f "$exts" -print 2>/dev/null \
-    | while read -r f; do
-        grep -nE '\b(TODO|FIXME|XXX|HACK)\b' "$f" 2>/dev/null \
-          | awk -F: -v file="${f#${repo}/}" '
-              {
-                marker = ""
-                if (match($0, /\b(TODO|FIXME|XXX|HACK)\b/)) {
-                  marker = substr($0, RSTART, RLENGTH)
-                }
-                print file ":" $2 ":" marker
-                count[file]++
-                if (count[file] >= 5) next
-              }
-            '
-      done)
+  if [ -z "$files" ]; then
+    return
+  fi
 
-  local total
-  total=$(printf "%s\n" "$counts" | grep -c . 2>/dev/null || echo 0)
+  # For each file, grep for markers, count, cap top 5 per file.
+  # Emit single line: repo|total|file1:count,file2:count,...
+  local file
+  local per_file_stats=""
+  local total=0
+  while read -r file; do
+    [ -z "$file" ] && continue
+    local count
+    count=$(grep -cE '\b(TODO|FIXME|XXX|HACK)\b' "$file" 2>/dev/null || echo 0)
+    [ "$count" -eq 0 ] && continue
+    total=$((total + count))
+    local rel="${file#${repo}/}"
+    per_file_stats+="${rel}:${count}"$'\n'
+  done <<EOF
+$files
+EOF
+
   if [ "$total" -eq 0 ]; then
     return
   fi
 
+  # Top 5 files by count
   local top
-  top=$(printf "%s\n" "$counts" \
-    | awk -F: '{print $1}' \
-    | sort | uniq -c | sort -rn | head -n 5)
-  printf "%s|%s|%s\n" "$(basename "$repo")" "$total" "$(echo "$top" | tr '\n' ',' | sed 's/,$//' | tr ' ' '~')"
+  top=$(printf "%s\n" "$per_file_stats" \
+    | awk -F: '{print $NF, $0}' \
+    | sort -rn \
+    | head -n 5 \
+    | awk '{$1=""; sub(/^ /, ""); print}')
+
+  # Collapse to comma-separated, replace spaces with tildes (survives awk -F'|' later)
+  local top_csv
+  top_csv=$(printf "%s\n" "$top" | paste -sd ',' - | tr ' ' '~')
+  printf "%s|%s|%s\n" "$(basename "$repo")" "$total" "$top_csv"
 }
 
 # ---------------------------------------------------------------------------
@@ -646,6 +659,10 @@ emit_report() {
   report+=$'\n'
 
   local i
+  if [ ${#SECTION_TITLES[@]} -eq 0 ] 2>/dev/null; then
+    report+="(no data collected)"
+    report+=$'\n'
+  fi
   for ((i=0; i<${#SECTION_TITLES[@]}; i++)); do
     report+="## ${SECTION_TITLES[$i]}"
     report+=$'\n'
@@ -654,6 +671,7 @@ emit_report() {
   done
 
   if [ -n "$WRITE_PATH" ]; then
+    mkdir -p "$(dirname "$WRITE_PATH")"
     printf "%s" "$report" > "$WRITE_PATH"
     log "wrote report to $WRITE_PATH"
   else

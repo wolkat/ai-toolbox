@@ -9,17 +9,17 @@ set -euo pipefail
 # Globals
 # ---------------------------------------------------------------------------
 
-local SCRIPT_DIR=""
-local SKILL_STANDARDS=""
-local QUIET=0
-local FIX=0
-local ALL=0
-local ERRORS=0
-local WARNINGS=0
-local TOTAL_CHECKS=0
+SCRIPT_DIR=""
+SKILL_STANDARDS=""
+QUIET=0
+FIX=0
+ALL=0
+ERRORS=0
+WARNINGS=0
+TOTAL_CHECKS=0
 
 # Detect color support
-local USE_COLOR=0
+USE_COLOR=0
 if [ -t 1 ] && [ "${TERM:-dumb}" != "dumb" ]; then
   USE_COLOR=1
 fi
@@ -370,7 +370,7 @@ lint_skill() {
   for h in "When to Use" "Workflow" "Best Practices"; do
     if grep -q "^## $h" "$skill_md"; then
       : # ok
-    elif grep -q "^## ${h,,}" "$skill_md" || grep -q "^## ${h^^}" "$skill_md"; then
+    elif grep -q "^## $(printf '%s' "$h" | tr '[:upper:]' '[:lower:]')" "$skill_md" || grep -q "^## $(printf '%s' "$h" | tr '[:lower:]' '[:upper:]')" "$skill_md"; then
       heading_issues="$heading_issues '$h'"
     fi
   done

@@ -86,12 +86,12 @@ generate_report() {
     exit 0
   fi
 
-  python3 -c "
-import csv
+  KPI_FILE="$KPI_FILE" FILTER_SKILL="$filter_skill" python3 -c "
+import csv, os
 from collections import defaultdict
 
-kpi_file = '$KPI_FILE'
-filter_skill = '$filter_skill'
+kpi_file = os.environ['KPI_FILE']
+filter_skill = os.environ['FILTER_SKILL']
 
 with open(kpi_file) as f:
     reader = csv.DictReader(f)

@@ -37,6 +37,11 @@ add-zsh-alias() {
     echo "  Current: alias $alias_name='$current_value'"
     echo "  New:     alias $alias_name='$alias_value'"
     echo -n "Update? [y/N] "
+    if [[ ! -t 0 ]]; then
+      echo
+      echo "Error: interactive terminal required for alias update" >&2
+      return 1
+    fi
     read -q reply
     echo
     if [[ "$reply" != "y" && "$reply" != "Y" ]]; then
@@ -55,15 +60,15 @@ add-zsh-alias() {
     echo "alias ${alias_name}='${escaped_value}'" >> "$zshrc"
   fi
 
-  source "$zshrc"
-  if [[ $? -eq 0 ]]; then
+  if zsh -n "$zshrc" 2>/dev/null; then
+    source "$zshrc"
     if [[ -n "$existing_line" ]]; then
       echo "Updated alias: alias ${alias_name}='${alias_value}'"
     else
       echo "Added alias: alias ${alias_name}='${alias_value}'"
     fi
   else
-    echo "Error: failed to source ~/.zshrc"
+    echo "Warning: ~/.zshrc has syntax errors; alias was written but not sourced" >&2
     return 1
   fi
 }
