@@ -1,6 +1,7 @@
 ---
 name: retro
 description: Session retrospective skill - analyze OpenCode sessions to extract learnings, measure reasoning quality, and track improvement over time using 5 Whys method and structured KPIs.
+triggers: ["/retro", "retro", "retrospective"]
 ---
 
 # Retro Skill
@@ -13,6 +14,8 @@ Analyze OpenCode sessions to extract learnings, measure reasoning quality, and d
 - User wants to analyze what went wrong in a session
 - User wants to track performance trends over time
 - Session had multiple iterations/fixes to get to correct solution
+- User runs `/retro for last 2 weeks` (covers multiple sessions in batch)
+- Recurring issues need reoccurrences logged in backlog
 
 ## Data Sources
 
@@ -20,6 +23,11 @@ Analyze OpenCode sessions to extract learnings, measure reasoning quality, and d
 1. **User input** - User describes what happened, tasks attempted, what worked/failed
 2. **Session logs** - `~/.local/share/opencode/log/` - tool calls, errors, timing
 3. **Supermemory** - Previous sessions, patterns, recurring issues
+4. **opencode.db** - `~/.local/share/opencode/opencode.db` (SQLite, source of truth)
+   - Tables: `session`, `message`, `part` (with `json_extract(data, '$.type')` for tool calls)
+   - Use sqlite3 CLI; query by `session_id`, `time_created`, `agent`, `model`
+   - Source of truth for tool counts, errors, agent switches (CA-022)
+   - Example: `sqlite3 ~/.local/share/opencode/opencode.db "SELECT id, title FROM session ORDER BY time_created DESC LIMIT 10"`
 
 ### What to Extract
 - Tasks completed during session
@@ -28,18 +36,34 @@ Analyze OpenCode sessions to extract learnings, measure reasoning quality, and d
 - How many attempts to reach correct solution
 - Any user corrections made during session
 
-## Data Directory Setup
+## Output Location
 
-Before saving retro reports, ensure the data directory exists:
+**Default**: `~/git/docs/learnings/` (project-tracked, in version control)
 
-```bash
-DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}/opencode/retro"
-mkdir -p "$DATADIR"
-```
+**Fallback**: `~/.local/share/opencode/retro/` (XDG data dir, personal)
 
-All retro outputs (Markdown + JSON) are saved to `~/.local/share/opencode/retro/` by default. Set `$XDG_DATA_HOME` env var to override.
+**Rule**: `docs/learnings/` is preferred for retros tied to a project/repo. XDG is preferred for personal/meta retros with no project.
+
+**Decision logic** (per CA-002):
+- If working directory has `docs/learnings/` (or in any parent): use it
+- If user explicitly says "XDG" or "personal": use XDG
+- Otherwise: ask via question tool
+
+## Related Tracking Files
+
+These MUST be updated as part of Step 6:
+
+- `~/git/docs/learnings/corrective-actions-backlog.md` (35 actions, 8 recurring)
+- `~/git/docs/learnings/corrective-actions-backlog.json` (tooling)
+- `~/git/docs/learnings/retrospectived-sessions.md` (prevents double-counting)
+- `~/git/docs/learnings/retrospectived-sessions.json` (tooling)
 
 ## Workflow
+
+### Step 0: Determine Output Location
+
+If unclear, ask: "Save retro to docs/learnings/ (project-tracked) or XDG data dir (personal)?"
+Default to `docs/learnings/`.
 
 ### Step 0.5: Design Verification (CRITICAL)
 
@@ -58,14 +82,37 @@ Before any tool call execution, verify these constraints (based on recurring ses
 1. **Path format check** — Read/Edit/Write tools require absolute paths
    - ❌ `~/.config/...` — tilde does NOT expand
    - ✅ `/Users/katops/.config/...` — absolute path
-   
+
 2. **Command separation check** — Bash tool: one concern per call
    - ❌ `echo "header" && grep pattern file` — combining unrelated commands
    - ✅ Separate `echo` and `grep` into individual tool calls
-   
+
 3. **Interactive safety check** — All bash commands must be non-interactive
    - No `vim`, `less`, `man`, interactive `git` commands
    - Use `-y`, `--yes`, `--non-interactive`, `-f` flags where available
+
+4. **Memory-first rule** (CA-003) — When prompt contains "memory" or "docs", query supermemory FIRST
+   ```bash
+   supermemory mode=search query="<topic>" scope=user
+   ```
+
+5. **Repo boundary check** (CA-004) — Before any write/commit
+   ```bash
+   git -C <parent_dir> rev-parse --git-dir
+   ```
+   If null: parent is not a git repo, do not commit there.
+
+6. **macOS bash 3.2 compat** (CA-005) — Use here-strings, while-read loops, no `declare -A`
+   ```bash
+   if [[ "${BASH_VERSION%%.*}" -lt 4 ]]; then
+       echo "WARN: bash 3.2 detected; avoid associative arrays"
+   fi
+   ```
+
+7. **AGENTS.md conventions** (CA-021) — Before generating scripts, read AGENTS.md for project-specific rules
+   - All scripts need `--help` and `-h` flags
+   - Use absolute paths in tool calls
+   - One concern per bash tool call
 
 Ask user for:
 - What tasks were attempted?
@@ -73,11 +120,7 @@ Ask user for:
 - What required fixes? (what was wrong → how was it fixed)
 - Any user corrections or clarifications during session?
 
-If logs available:
-- Read `~/.local/share/opencode/log/` for tool call history
-- Identify error patterns, repeated operations
-
-### Step 1.5: Auto-Read Session Logs (Optional)
+### Step 1.5: Auto-Read Session Logs and DB (Optional)
 
 To automatically identify session tasks:
 
@@ -86,19 +129,44 @@ To automatically identify session tasks:
    - Focus on last modified files (last 30 min)
    - Look for .log, .json files
 
-2. **Extract from logs:**
+2. **Query opencode.db for authoritative data:**
+   ```bash
+   sqlite3 ~/.local/share/opencode/opencode.db "
+     SELECT id, title, time_created, agent, model
+     FROM session
+     WHERE time_created > <since_timestamp>
+     ORDER BY time_created DESC
+   "
+   ```
+   - Count tool calls: `json_extract(data, '$.tool')` grouped by tool
+   - Find errors: `json_extract(data, '$.state.status')='error'`
+   - Read user prompts: `json_extract(data, '$.text')` from `part` table joined on `message`
+
+3. **Extract from logs:**
    - Tool calls (bash, edit, write, read, grep, glob)
    - Errors and warnings
    - File paths modified
    - Any "failed", "error", "retry" patterns
 
-3. **Group into tasks:**
+4. **Group into tasks:**
    - Sequence of related operations = 1 task
    - Mark which succeeded/failed based on subsequent corrections
    - Identify user corrections: look for "that's wrong", "not correct", etc.
 
-4. **Present to user:**
-   "I found these operations from session logs. Is this accurate?"
+5. **Present to user:**
+   "I found these operations from session logs and DB. Is this accurate?"
+
+### Step 1.6: Check Retrospectived Sessions Log
+
+Read `~/git/docs/learnings/retrospectived-sessions.md` (or fallback XDG path).
+- Skip sessions already covered by past retros
+- Note the new session_ids that will be added in Step 6
+
+### Step 1.7: Find New Sessions to Retro
+
+1. Compare opencode.db sessions against `retrospectived-sessions.md`
+2. Surface to user: "Found N new sessions since last retro. Cover all or specific ones?"
+3. For batch retro of last 2 weeks: query sessions in the time window, deduplicate against log
 
 ### Step 2: Analyze Each Task
 
@@ -150,153 +218,70 @@ From analysis, derive:
 - **Systemic** - Long-term improvement (e.g., "add type checking to skill audit")
 - **Learning** - Add to supermemory for future reference
 
+For each new corrective action:
+1. Check `corrective-actions-backlog.md` for existing open action with similar description
+2. If match found: append to its `reoccurrences[]` array with date + session_id
+3. If no match: assign new CA-### ID and add new entry
+
 ### Step 6: Generate Outputs
 
 #### A. Display Report
 
-Show structured retrospective to user in chat:
-
-```markdown
-## Retro: {timestamp}
-
-### Summary
-- Tasks: {N} | Success: {N%} | Fixes: {N} | First-try: {N%}
-
-### Tasks Analyzed
-| Task | Result | Fixes | Root Cause |
-|------|--------|-------|------------|
-| Fix supermemory | Failed → Fixed | 2 | Wrong config format |
-| Rename file | Correct | 0 | - |
-
-### Reasoning Rating
-| Dimension | Score | Notes |
-|-----------|-------|-------|
-| Initial accuracy | 3/5 | ... |
-| Constraint checking | 4/5 | ... |
-| Root cause depth | 2/5 | ... |
-| Self-correction | 3/5 | ... |
-| Pattern recognition | 3/5 | ... |
-
-### 5 Whys Examples
-1. **Issue**: Wrong timestamp format
-   - Why 1: Used HHMM instead of HH:MM
-   - Why 2: Assumed format without checking
-   - Why 3: Pattern from previous task
-   - Why 4: No explicit validation step
-   - Why 5: Time pressure, skipped verification
-
-### Corrective Actions
-- [ ] Add format validation before file operations
-- [ ] Document timestamp format in AGENTS.md
-- [ ] Note: "variable scope confusion" recurring - investigate pattern
-
-### Trends (from previous)
-- First-try correctness: {prev}% → {current}%
-- Fix iterations: {prev} → {current}
-- Recurring issues: {list}
-
-### Supermemory Add
-Will add summary to supermemory with tags: retro, session-analysis
-```
+Show structured retrospective to user in chat.
 
 #### B. Save Markdown
 
-Save to: `~/.local/share/opencode/retro/{timestamp}.md`
-
-> **Note:** Uses XDG Data Directory. Set `$XDG_DATA_HOME` to override, or defaults to `~/.local/share/`.
-
-Create a structured markdown file with all analysis results:
-- Summary metrics
-- Task breakdown table
-- Reasoning ratings
-- 5 Whys examples
-- Corrective actions
-- Recurring issues
-- Trends
+Save to: `{output_dir}/{timestamp}.md` where output_dir was determined in Step 0.
 
 #### C. Save JSON
 
-Create file: `~/.local/share/opencode/retro/{timestamp}.json`
-
-```json
-{
-  "timestamp": "2026-05-17_1954",
-  "summary": {
-    "tasks": 5,
-    "success": 4,
-    "failed": 1,
-    "fixes_required": 3,
-    "first_try_correct": 60
-  },
-  "tasks": [
-    {
-      "description": "Fix supermemory plugin",
-      "result": "failed_then_fixed",
-      "fixes": 2,
-      "root_cause": "Wrong config format - @latest suffix"
-    }
-  ],
-  "reasoning": {
-    "initial_accuracy": 3,
-    "constraint_checking": 4,
-    "root_cause_depth": 2,
-    "self_correction": 3,
-    "pattern_recognition": 3
-  },
-  "five_whys": [
-    {
-      "issue": "Wrong timestamp format",
-      "chain": ["Used HHMM", "Assumed format", "Pattern from before", "No validation", "Time pressure"]
-    }
-  ],
-  "corrective_actions": [
-    {"action": "Add format validation", "type": "process"},
-    {"action": "Document timestamp format", "type": "learning"}
-  ],
-  "recurring_issues": ["variable scope confusion"]
-}
-```
+Save to: `{output_dir}/{timestamp}.json`
 
 #### D. Save to Supermemory
 
-Add to supermemory (scope: user, type: learned-pattern):
+Add to supermemory (scope: user, type: learned-pattern).
 
-#### E. Calculate Trends
+#### E. Update Corrective Actions Backlog
+
+1. Read `~/git/docs/learnings/corrective-actions-backlog.md` (or fallback path)
+2. For each corrective action from this retro:
+   - If matches existing open action: append reoccurrence with `{date: YYYY-MM-DD, session_id: <current>}`
+   - If new: add new entry with `id: CA-###` and `first_seen: today`
+3. Save the updated backlog
+
+#### F. Update Retrospectived Sessions Log
+
+1. Read `~/git/docs/learnings/retrospectived-sessions.md`
+2. For each new session_id covered by this retro, add an entry
+3. Include: session_id, retro_file, retro_date, session_start, title, model, scope
+4. For cross-session retros: list `covers_session_ids` array
+
+#### G. Update INDEX.md
+
+If retro file was added to `docs/learnings/` (not XDG fallback):
+1. Read `~/git/docs/INDEX.md`
+2. Add link under "Session Retrospectives" section
+3. Update "Last Updated" date
+
+#### H. Calculate Trends
 
 When 2+ previous retros exist:
 
-1. **Read previous JSON files:**
-   - Scan `~/.local/share/opencode/retro/` directory for `*.json` files
-   - Exclude current timestamp
-   - Sort by timestamp (oldest first)
-
-2. **Calculate metrics for last N sessions:**
-   - Default N = 5
+1. **Read previous JSON files** from `~/git/docs/learnings/retros-*.json` and XDG
+2. **Calculate metrics for last N sessions:** N=5
    - Avg first_try_correct %
    - Avg fixes_required
    - Reasoning average (all 5 dimensions)
-
-3. **Generate trend output:**
-```
-Trends (last N sessions):
-- First-try: {prev}% → {current}% ({direction})
-- Fixes: {prev} → {current} ({direction})
-- Reasoning: {prev} → {current} ({direction})
-```
-
+3. **Generate trend output** with direction (up/down/stable)
 4. **Include in markdown report** under "Trends" section
+5. **Note recurring issues** across sessions from backlog
 
-5. **Note recurring issues** across sessions:
-   - Look for same root causes appearing
-   - Note patterns in corrective actions not implemented
+### Step 7: Present to User
 
----
-
-Add to supermemory (scope: user, type: learned-pattern):
-
-```markdown
-Retro {timestamp}: Tasks={N}, First-try={N}%, Fixes={N}, Reasoning={avg}/5. Root causes: {list}. Corrective: {list}. Recurring: {list}
-```
+- Show the markdown report
+- Ask if corrective actions should be added to backlog (auto-done in Step 6.E)
+- Note any recurring patterns
+- Suggest reviewing trends periodically
 
 ## Best Practices
 
@@ -307,6 +292,9 @@ Retro {timestamp}: Tasks={N}, First-try={N}%, Fixes={N}, Reasoning={avg}/5. Root
 5. **Track recurring** - Note patterns across sessions for supermemory
 6. **Review trends** - Compare outputs weekly to see improvement
 7. **Act on actions** - Don't just note corrective actions, implement them
+8. **Use sqlite3 over logs** - opencode.db is authoritative; logs are secondary (CA-022)
+9. **Default to docs/learnings/** - Project-tracked is preferred for retros tied to code work
+10. **Update backlog AND sessions log** - Three-file coupling prevents drift
 
 ## Querying Past Retros
 
@@ -315,24 +303,34 @@ To find patterns:
 ```bash
 # In supermemory
 supermemory search "retro" scope:user limit:10
+
+# In docs/learnings
+grep -l "first_try_correct" ~/git/docs/learnings/retro-*.json
 ```
 
 Look for:
-- Same root cause appearing multiple times
+- Same root cause appearing multiple times (check backlog `reoccurrences`)
 - Reasoning dimensions consistently low
 - Corrective actions never implemented
 - Improvement or degradation over time
 
 ## Integration with Stow
 
-If using stow to manage ai-toolbox:
+Source: `~/git/projects/ai-toolbox/opencode/skills/retro/`
+Installed: `~/.config/opencode/skills/retro/` (via stow symlink)
+
+To update after editing the source:
 
 ```bash
-cd ~/git/ai-toolbox
-make restow  # updates ~/.config/opencode/skills/retro
+cd ~/git/projects/ai-toolbox
+make restow-opencode
 ```
 
-Or manual:
+Pre-update validation (recommended before editing):
+
 ```bash
-cp -r ~/git/ai-toolbox/opencode/skills/retro ~/.config/opencode/skills/
+~/git/projects/ai-toolbox/scripts/precheck-skill-update.sh --with-db retro \
+    ~/git/projects/ai-toolbox/opencode/skills/retro/SKILL.md
 ```
+
+The precheck script runs 11 read-only checks (PRE-1 through PRE-11) and refuses to proceed on FAIL. Useful when modifying any OpenCode skill.

@@ -127,6 +127,7 @@ Before committing any skill:
 - [ ] No duplicate content between README and SKILL
 - [ ] All code examples are tested/valid
 - [ ] File uses sentence case for headings
+- [ ] Copilot instruction files have `applyTo` frontmatter
 
 ---
 

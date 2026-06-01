@@ -11,3 +11,6 @@ node_modules/
 
 # OS artifacts
 .DS_Store
+
+# Session memory (per-session, not source)
+MEMORY.md
