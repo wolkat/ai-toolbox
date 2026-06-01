@@ -2,18 +2,48 @@
 
 ## Agent Configuration
 
-```json
-"agent": {
-  "review":   { "mode": "subagent" },
-  "refactor": { "mode": "subagent" },
-  "explore":  { "disable": true },
-  "general":  { "disable": true }
-}
-```
+Active agents in `opencode.json`:
 
-- Two active subagents: `review` (code review), `refactor` (refactoring).
-- `explore` and `general` disabled.
-- `oh-my-openagent` plugin provides the agent orchestration layer.
+| Agent | Mode | Purpose | Edit | Key Restriction |
+|-------|------|---------|------|-----------------|
+| `review` | subagent | Adversarial code review, read-only on source | deny | task: deny |
+| `refactor` | subagent | Code refactoring | allow | - |
+| `todo` | subagent | Scan repos for unfinished work | deny | question: deny |
+| `agent-forge` | subagent | Create agent definitions from patterns | allow | task: deny |
+| `infra-maintainer` | subagent | Plugin/skill/agent lifecycle management | allow | task: deny |
+| `scaffold` | subagent | Feature scaffolding following conventions | allow | task: deny |
+| `cross-repo-coordinator` | subagent | Cross-repo audit & hygiene | deny | write: deny, task: deny |
+| `tool-builder` | subagent | CLI/script development | allow | task: deny |
+
+Disabled: `explore`, `general`.
+
+`oh-my-openagent` plugin provides the orchestration layer (Sisyphus, Oracle, Librarian, etc.).
+
+### Archetype Agents (June 2026)
+
+Five archetype agents derived from session pattern analysis (235 sessions).
+Each has minimal permissions — deny by default, allow only what's needed.
+
+**`infra-maintainer`** — Plugin/skill install-validate-debug-cleanup cycle.
+Top pain point: .ts vs compiled .js path resolution. Never symlinks skills.
+
+**`review`** — Adversarial code review. Findings go to `docs/learnings/`, never to source.
+For codebases <2000 LOC, prefer direct file reads over sub-agents.
+
+**`scaffold`** — Reads 3+ neighboring files before writing any new file.
+Mimics existing patterns, updates plan checkboxes after completion.
+
+**`cross-repo-coordinator`** — Read-heavy scanner/auditor. No write permissions.
+Outputs grouped markdown to stdout. Uses `git -C <path> rev-parse` before any git op.
+
+**`tool-builder`** — Scripts must have -h/--help, target bash 3.2, be non-interactive.
+Stores outputs in `docs/learnings/`, never in XDG or ~/git root.
+
+**`agent-forge`** — Creates agent definitions by reading session patterns from
+`docs/learnings/`, validates against opencode.json schema, and proposes agents
+with minimal permissions. Invoked via `/agent-forge`.
+
+See [Session Pattern Analysis](../learnings/session-pattern-analysis-2026-06.md) for full data.
 
 ## Skills & Commands
 
