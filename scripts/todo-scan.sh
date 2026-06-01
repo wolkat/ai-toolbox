@@ -286,7 +286,7 @@ scan_uncommitted() {
   fi
   local m=0 a=0 u=0 c=0
   local line
-  while read -r line; do
+  while IFS= read -r line; do
     [ -z "$line" ] && continue
     local x="${line:0:1}"
     local y="${line:1:1}"

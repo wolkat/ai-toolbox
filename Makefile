@@ -3,7 +3,7 @@ TARGET := $(HOME)/.config/opencode
 CODEX_TARGET := $(HOME)/.codex
 COPILOT_TARGET := $(HOME)/.copilot
 
-.PHONY: install uninstall status restow check help lint-skill track-usage track-kpi verify-plugin
+.PHONY: install uninstall status restow check help lint-skill todo-scan track-usage track-kpi verify-plugin
 
 check:
 	@command -v stow >/dev/null 2>&1 || (echo "stow not installed" && exit 1)
@@ -186,12 +186,16 @@ help:
 	@echo ""
 	@echo "script commands:"
 	@echo "  make lint-skill     - lint all OpenCode skill markdown files"
+	@echo "  make todo-scan      - scan repos for unfinished work"
 	@echo "  make track-usage    - survey CLI tool usage from shell history"
 	@echo "  make track-kpi      - generate KPI report for skill effectiveness"
 	@echo "  make verify-plugin  - validate OpenCode plugin configurations"
 
 lint-skill:
 	@bash scripts/lint-skill.sh --all
+
+todo-scan:
+	@bash scripts/todo-scan.sh
 
 track-usage:
 	@bash scripts/track-tool-usage.sh
