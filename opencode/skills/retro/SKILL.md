@@ -60,7 +60,11 @@ These MUST be updated as part of Step 6:
 
 ## Workflow
 
-### Step 0: Determine Output Location
+### Step 0: Get Timestamp
+
+Run `date '+%Y-%m-%d_%H%M'` and record the result. Use this timestamp for all filenames and date references. Never estimate the time of day. (CA-010, CA-011)
+
+### Step 0.1: Determine Output Location
 
 If unclear, ask: "Save retro to docs/learnings/ (project-tracked) or XDG data dir (personal)?"
 Default to `docs/learnings/`.

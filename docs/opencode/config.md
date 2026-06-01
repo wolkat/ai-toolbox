@@ -37,3 +37,15 @@ grep '"plugin"' ~/.config/opencode/tui.json
 
 Mismatched arrays cause the wrong agents to show in the TUI sidebar. If that
 happens, sync `tui.json` to match `opencode.json`.
+
+## TUI Behavior
+
+Save commands should produce no stdout output in TUI mode. Redirect all save
+confirmations to stderr (`>&2`) or suppress them entirely. This prevents
+TUI rendering issues and keeps the interface clean.
+
+## Data Storage
+
+`opencode.db` (SQLite3) is the source of truth for session data, not log files.
+Query the database for authoritative retro data. Log files are secondary and
+may be incomplete.
