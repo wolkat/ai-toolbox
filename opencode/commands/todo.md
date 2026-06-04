@@ -122,6 +122,7 @@ If the scope is unclear, ask:
 ## Notes
 
 - The scan is read-only; it never modifies files or git state.
+- **For broader cross-repo audits** including todo scanning, use `/audit` (cross-repo-coordinator agent) which includes todo findings plus git state, stale branches, and retro analysis.
 - Exits 0 always; per-repo errors are logged on stderr but do not abort.
 - Backlog file detection is path-aware to avoid noise: `_bmad-output/`,
   `docs/`, `docs/learnings/`. PR templates and standards docs are excluded
